@@ -406,27 +406,9 @@ encoding_result_t calculate_way_encodings(
 
           offsets.resize(elevations_idx);
           if (!segment_elevation.empty()) {
-            auto& encoding = offsets.emplace_back(
-                elevations.size(), segment_elevation.size(),
-                elevation_storage::encoding::coding{0},
-                elevation_storage::encoding::coding{0});
+            offsets.emplace_back(elevations.size(), segment_elevation.size());
             elevations.insert(end(elevations), begin(segment_elevation),
                               end(segment_elevation));
-
-            auto prev = segment_elevation[0];
-            for (auto it = ++begin(segment_elevation);
-                 it != end(segment_elevation); ++it) {
-              if (*it < prev) {
-                encoding.down_ +=
-                    static_cast<cista::base_t<elevation_monotonic_t>>(
-                        to_idx(prev - (*it)));
-              } else {
-                encoding.up_ +=
-                    static_cast<cista::base_t<elevation_monotonic_t>>(
-                        to_idx((*it) - prev));
-              }
-              prev = *it;
-            }
           }
           ++elevations_idx;
         }
@@ -475,13 +457,13 @@ void write_ordered_encodings(elevation_storage& storage,
     auto bucket = storage.offsets_.back();
     for (auto const offset : result.offsets_[mapping.sort_idx_]) {
       if (offset.valid()) {
-        bucket.push_back(elevation_storage::encoding{
-            storage.elevations_.size(), offset.n_, offset.up_, offset.down_});
+        bucket.push_back(
+            elevation_storage::encoding{storage.elevations_.size(), offset.n_});
         for (auto i = offset.idx_; i < offset.idx_ + offset.n_; ++i) {
           storage.elevations_.push_back(result.elevations_[i]);
         }
       } else {
-        bucket.push_back(elevation_storage::encoding{0, 0, 0, 0});
+        bucket.push_back(elevation_storage::encoding{});
       }
     }
     pt->increment();
@@ -511,31 +493,6 @@ void elevation_storage::set_elevations(ways const& w,
   write_ordered_encodings(*this, std::move(unordered_encodings), pt);
 }
 
-constexpr auto const kCompressedValues = std::array<elevation_monotonic_t, 16>{
-    elevation_monotonic_t{0U},  elevation_monotonic_t{1U},
-    elevation_monotonic_t{2U},  elevation_monotonic_t{4U},
-    elevation_monotonic_t{6U},  elevation_monotonic_t{8U},
-    elevation_monotonic_t{11U}, elevation_monotonic_t{14U},
-    elevation_monotonic_t{17U}, elevation_monotonic_t{21U},
-    elevation_monotonic_t{25U}, elevation_monotonic_t{29U},
-    elevation_monotonic_t{34U}, elevation_monotonic_t{38U},
-    elevation_monotonic_t{43U}, elevation_monotonic_t{48U}};
-
-elevation_storage::encoding::coding encode(elevation_monotonic_t const e) {
-  auto const c = std::ranges::lower_bound(kCompressedValues, e);
-  return (c == end(kCompressedValues))
-             ? static_cast<elevation_storage::encoding::coding>(
-                   kCompressedValues.size() - 1)
-             : static_cast<elevation_storage::encoding::coding>(
-                   c - begin(kCompressedValues));
-}
-
-elevation_monotonic_t decode_helper(
-    elevation_storage::encoding::coding const c) {
-  assert(c < kCompressedValues.size());
-  return kCompressedValues.at(c);
-}
-
 elevation_storage::elevation elevation_storage::get_elevations(
     way_idx_t const way, std::uint16_t const segment) const {
   if (way >= elevations_.size() || segment >= offsets_[way].size()) {
@@ -543,18 +500,23 @@ elevation_storage::elevation elevation_storage::get_elevations(
   }
 
   auto const encoding = offsets_[way][segment];
-
   if (!encoding.valid()) {
     return {};
   }
 
   auto const it = std::next(begin(elevations_), encoding.idx_);
-  return {
-      .values_ =
-          std::vector<data_vec_t::value_type>{it, std::next(it, encoding.n_)},
-      .n_ = encoding.n_,
-      .up_ = decode_helper(encoding.up_),
-      .down_ = decode_helper(encoding.down_)};
+  auto e = elevation{{it, std::next(it, encoding.n_)}, encoding.n_};
+  auto prev = e.values_[0];
+  for (auto i = 1U; i < e.n_; ++i) {
+    auto const v = e.values_[i];
+    if (v > prev) {
+      e.up_ += static_cast<elevation_monotonic_t::value_t>((v - prev).v_);
+    } else if (v < prev) {
+      e.down_ += static_cast<elevation_monotonic_t::value_t>((prev - v).v_);
+    }
+  }
+
+  return e;
 }
 
 elevation_storage::elevation get_elevations(elevation_storage const* elevations,
@@ -571,6 +533,8 @@ elevation_storage::elevation& elevation_storage::elevation::operator+=(
     elevation const& other) {
   up_ += to_idx(other.up_);
   down_ += to_idx(other.down_);
+  // values_.insert(end(values_), begin(other.values_), end(other.values_));
+  // n_ += other.n_;
   return *this;
 }
 
@@ -579,10 +543,6 @@ elevation_storage::elevation elevation_storage::elevation::swapped() const {
       .up_ = down_,
       .down_ = up_,
   };
-}
-
-elevation_storage::encoding::operator bool() const {
-  return valid() && (up_ != 0U || down_ != 0U);
 }
 
 }  // namespace osr

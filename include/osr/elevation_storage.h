@@ -39,21 +39,10 @@ struct elevation_storage {
   };
 
   struct encoding {
-    using coding = std::uint8_t;
-    encoding(cista::base_t<way_idx_t> idx,
-             std::uint8_t n,
-             coding up,
-             coding down)
-        : idx_{idx}, n_{n}, up_{up}, down_{down} {}
-    encoding() = default;
-    elevation decode() const;
-    explicit operator bool() const;
     bool valid() const { return n_ != 0; }
 
     cista::base_t<way_idx_t> idx_{0};
     std::uint8_t n_{0};
-    coding up_ : 4 {};
-    coding down_ : 4 {};
   };
 
   elevation_storage(std::filesystem::path const&,
