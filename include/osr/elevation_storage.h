@@ -32,7 +32,7 @@ struct elevation_storage {
     elevation& operator+=(elevation const&);
     elevation swapped() const;
 
-    data_vec_t::value_type const* first_{nullptr};
+    std::vector<data_vec_t::value_type> values_{};
     std::uint8_t n_{0};
     elevation_monotonic_t up_{0};
     elevation_monotonic_t down_{0};

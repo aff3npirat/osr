@@ -550,10 +550,13 @@ elevation_storage::elevation elevation_storage::get_elevations(
     return {};
   }
 
-  return {.first_ = std::next(begin(elevations_), encoding.idx_),
-          .n_ = encoding.n_,
-          .up_ = decode_helper(encoding.up_),
-          .down_ = decode_helper(encoding.down_)};
+  auto const it = std::next(begin(elevations_), encoding.idx_);
+  return {
+      .values_ =
+          std::vector<data_vec_t::value_type>{it, std::next(it, encoding.n_)},
+      .n_ = encoding.n_,
+      .up_ = decode_helper(encoding.up_),
+      .down_ = decode_helper(encoding.down_)};
 }
 
 elevation_storage::elevation get_elevations(elevation_storage const* elevations,

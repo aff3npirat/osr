@@ -110,9 +110,8 @@ elevation_profile::elevation_profile(ways const& w,
     }
   };
 
-  auto it = utl::find_if(segments, [&](auto const& seg) {
-    return seg.elevation_.first_ != nullptr && seg.elevation_.n_ != 0;
-  });
+  auto it = utl::find_if(
+      segments, [&](auto const& seg) { return seg.elevation_.n_ != 0; });
   if (it == end(segments)) {
     return;
   }
@@ -125,7 +124,7 @@ elevation_profile::elevation_profile(ways const& w,
   };
 
   auto dist_acc = 0U;
-  add(w.get_node_pos(it->from_), 0, *(it->elevation_.first_));
+  add(w.get_node_pos(it->from_), 0, it->elevation_.values_[0]);
   for (; it != end(segments); it++) {
     auto const s = *it;
     if (s.elevation_.n_ == 0) {
@@ -134,7 +133,7 @@ elevation_profile::elevation_profile(ways const& w,
 
     if (s.elevation_.n_ == 1) {
       dist_acc += s.dist_;
-      add(w.get_node_pos(s.to_), dist_acc, *(s.elevation_.first_));
+      add(w.get_node_pos(s.to_), dist_acc, it->elevation_.values_[0]);
       continue;
     }
 
@@ -152,7 +151,7 @@ elevation_profile::elevation_profile(ways const& w,
       dist_acc += step_dist;
 
       add(point::from_latlng({to_lat, to_lng}), dist_acc,
-          *std::next(s.elevation_.first_, i));
+          s.elevation_.values_[i]);
     }
   }
 
