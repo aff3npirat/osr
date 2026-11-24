@@ -1,5 +1,4 @@
 #include "osr/elevation_storage.h"
-#include <cista/strong.h>
 
 #include <cmath>
 #include <algorithm>
@@ -9,9 +8,10 @@
 #include <mutex>
 #include <ranges>
 #include <span>
-#include <sstream>
 #include <string>
 #include <vector>
+
+#include "cista/strong.h"
 
 #include "utl/enumerate.h"
 #include "utl/pairwise.h"
@@ -22,6 +22,7 @@
 #include "geo/latlng.h"
 
 #include "osr/point.h"
+#include "osr/preprocessing/elevation/elevation_stats.h"
 #include "osr/preprocessing/elevation/provider.h"
 #include "osr/preprocessing/elevation/resolution.h"
 #include "osr/preprocessing/elevation/shared.h"
@@ -37,70 +38,6 @@ constexpr auto const kDataName = "elevation_data.bin";
 constexpr auto const kOffsetName = "elevation_offsets.bin";
 constexpr auto const kOffsetIndexName = "elevation_offset_idx.bin";
 };  // namespace elevation_files
-
-struct elevation_stats {
-  static auto const kNBuckets = 8U;
-
-  elevation_stats(unsigned max_points) : max_points_{max_points} {
-    for (auto const _ : buckets_) {
-      n_per_length_.add_back_sized(max_points);
-    }
-  }
-
-  void clear() {
-    n_segments_ = 0U;
-    min_abs_threshold_ = 0;
-    min_incline_ = 0;
-    max_incline_ = 0;
-
-    for (auto i = 0U; i < kNBuckets; ++i) {
-      for (auto j = 0U; j < max_points_; ++j) {
-        n_per_length_[i][j] = 0U;
-      }
-    }
-  }
-
-  void add(elevation_stats const& other) {
-    n_segments_ += other.n_segments_;
-    min_abs_threshold_ += other.min_abs_threshold_;
-    min_incline_ += other.min_incline_;
-    max_incline_ += other.max_incline_;
-
-    for (auto i = 0U; i < kNBuckets; ++i) {
-      for (auto j = 0U; j < max_points_; ++j) {
-        n_per_length_[i][j] += other.n_per_length_[i][j];
-      }
-    }
-  }
-
-  std::string to_str() {
-    std::stringstream ss{};
-
-    ss << "Number of segments: " << n_segments_ << std::endl;
-    ss << "Number of points per segment length (max=" << max_points_
-       << "): " << std::endl;
-    for (auto i = 0U; i < kNBuckets; ++i) {
-      ss << buckets_[i] << "m: " << n_per_length_[i][0];
-      for (auto j = 1U; j < max_points_; ++j) {
-        ss << ", " << n_per_length_[i][j];
-      }
-      ss << std::endl;
-    }
-    ss << std::endl;
-
-    ss << "below 'min_elevation': " << min_abs_threshold_ << std::endl;
-    ss << "below 'min_incline': " << min_incline_ << std::endl;
-    ss << "greater 'max_incline': " << max_incline_ << std::endl;
-
-    return ss.str();
-  }
-
-  double const buckets_[kNBuckets] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 50.0};
-  vecvec<std::size_t, unsigned> n_per_length_{};
-  unsigned const max_points_;
-  unsigned n_segments_{0}, min_abs_threshold_{0}, min_incline_{0},
-      max_incline_{0};
-};
 
 using path_vec = std::vector<fs::path>;
 using sort_idx_t = cista::strong<std::uint32_t, struct sort_idx_>;
@@ -158,7 +95,7 @@ std::vector<ev::elevation_meters_t> get_way_elevation(
     point const to,
     ev::resolution const& res,
     ev::elevation_params const& params,
-    elevation_stats& stats) {
+    ev::elevation_stats& stats) {
   auto const a = provider.get(from);
   auto const b = provider.get(to);
   if (a == ev::elevation_meters_t::invalid() ||
@@ -280,8 +217,8 @@ std::vector<ev::elevation_meters_t> get_way_elevation(
   }
 
   stats.n_segments_ += 1;
-  for (auto i = 1U; i <= elevation_stats::kNBuckets; ++i) {
-    if (i == elevation_stats::kNBuckets || stats.buckets_[i] > seg_dist) {
+  for (auto i = 1U; i <= ev::elevation_stats::kNBuckets; ++i) {
+    if (i == ev::elevation_stats::kNBuckets || stats.buckets_[i] > seg_dist) {
       stats.n_per_length_[i - 1][n - 1] += 1;
       break;
     }
@@ -387,13 +324,14 @@ encoding_result_t calculate_way_encodings(
 
   pt->in_high(ordering.size());
 
-  auto stats = elevation_stats{params.max_points_};
+  auto stats = ev::elevation_stats{params.max_points_};
   utl::parallel_for(
       ordering,
       [&](way_ordering_t const way_ordering) {
         thread_local auto elevations = std::vector<ev::elevation_meters_t>{};
         thread_local auto offsets = std::vector<elevation_storage::encoding>{};
-        thread_local auto thread_stats = elevation_stats{params.max_points_};
+        thread_local auto thread_stats =
+            ev::elevation_stats{params.max_points_};
 
         auto const& way_idx = way_ordering.way_idx_;
 

@@ -1,8 +1,8 @@
 #include "osr/routing/elevation_profile.h"
+
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
-
 #include <algorithm>
 #include <iterator>
 #include <string>

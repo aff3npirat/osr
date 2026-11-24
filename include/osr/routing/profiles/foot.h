@@ -223,7 +223,7 @@ struct foot {
                        std::optional<routing_time_t> const start_time,
                        bitvec<node_idx_t> const* blocked,
                        sharing_data const*,
-                       elevation_storage const*,
+                       elevation_storage const* elevations,
                        Fn&& fn) {
     for (auto const [way, i] :
          utl::zip_unchecked(w.node_ways_[n.n_], w.node_in_way_idx_[n.n_])) {
@@ -251,6 +251,12 @@ struct foot {
           return;
         }
 
+        auto const elevation = [&]() {
+          auto const e = (from < to) ? get_elevations(elevations, way, from)
+                                     : get_elevations(elevations, way, to);
+          auto const kForward = SearchDir == direction::kForward;
+          return (kForward == (from < to)) ? e : e.swapped();
+        }();
         auto const emit = [&](level_t const target_lvl) {
           auto const dist = w.get_way_node_distance(way, std::min(from, to));
           auto const step = clamp_add(
@@ -258,7 +264,7 @@ struct foot {
                        dist, start_time, current_duration, SearchDir),
               node_cost(params, cost_node_prop));
           fn(node{target_node, target_lvl}, step.cost_, step.duration_, dist,
-             way, from, to, elevation_storage::elevation{}, false);
+             way, from, to, elevation, false);
         };
 
         if constexpr (SearchDir == direction::kForward) {
