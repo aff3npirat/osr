@@ -158,7 +158,7 @@ std::vector<ev::elevation_meters_t> get_way_elevation(
     ev::resolution const& res,
     ev::elevation_params const& params,
     elevation_stats& stats) {
-  auto a = provider.get(from);
+  auto const a = provider.get(from);
   auto const b = provider.get(to);
   if (a == ev::elevation_meters_t::invalid() ||
       b == ev::elevation_meters_t::invalid()) {
@@ -190,7 +190,7 @@ std::vector<ev::elevation_meters_t> get_way_elevation(
 
   auto elevation = std::vector<ev::elevation_meters_t>{};
   auto step_index = std::vector<unsigned>{};
-  step_index.reserve(params.max_points_);
+  elevation.reserve(params.max_points_);
   step_index.reserve(params.max_points_);
 
   unsigned n = 2;
@@ -262,17 +262,15 @@ std::vector<ev::elevation_meters_t> get_way_elevation(
       break;
     }
 
-    step_index.insert(--end(step_index), steps * (n - 1) / n);
-    elevation.insert(--end(elevation), get(steps * (n - 1) / n));
     n++;
-    elevation.push_back(b);
-    step_index.push_back(steps);
-    auto x = steps / n;
+    auto x = steps / (n - 1);
     for (auto i = 1U; i < n - 1; ++i) {
       step_index[i] = x;
       elevation[i] = get(x);
-      x += steps / n;
+      x += steps / (n - 1);
     }
+    elevation.push_back(b);
+    step_index.push_back(steps);
   }
 
   if (n == 2 && !is_significant(a, b)) {  // flat way -> single point
