@@ -1,4 +1,5 @@
 #include "osr/elevation_storage.h"
+#include <cista/strong.h>
 
 #include <cmath>
 #include <algorithm>
@@ -406,7 +407,9 @@ encoding_result_t calculate_way_encodings(
 
           offsets.resize(elevations_idx);
           if (!segment_elevation.empty()) {
-            offsets.emplace_back(elevations.size(), segment_elevation.size());
+            offsets.push_back(elevation_storage::encoding{
+                .idx_ = static_cast<way_idx_t::value_t>(elevations.size()),
+                .n_ = static_cast<std::uint8_t>(segment_elevation.size())});
             elevations.insert(end(elevations), begin(segment_elevation),
                               end(segment_elevation));
           }

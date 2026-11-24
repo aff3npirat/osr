@@ -41,7 +41,7 @@ struct elevation_storage {
   struct encoding {
     bool valid() const { return n_ != 0; }
 
-    cista::base_t<way_idx_t> idx_{0};
+    way_idx_t::value_t idx_{0};
     std::uint8_t n_{0};
   };
 
