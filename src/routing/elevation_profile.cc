@@ -110,8 +110,14 @@ elevation_profile::elevation_profile(ways const& w,
     }
   };
 
-  auto it = utl::find_if(
-      segments, [&](auto const& seg) { return seg.elevation_.n_ != 0; });
+  auto dist_acc = 0U;
+  auto it = utl::find_if(segments, [&](auto const& seg) {
+    if (seg.elevation_.n_ != 0) {
+      return true;
+    }
+    dist_acc += seg.dist_;
+    return false;
+  });
   if (it == end(segments)) {
     return;
   }
@@ -123,11 +129,11 @@ elevation_profile::elevation_profile(ways const& w,
     distances.push_back(d);
   };
 
-  auto dist_acc = 0U;
-  add(w.get_node_pos(it->from_), 0, it->elevation_.values_[0]);
+  add(w.get_node_pos(it->from_), dist_acc, it->elevation_.values_[0]);
   for (; it != end(segments); it++) {
     auto const s = *it;
     if (s.elevation_.n_ == 0) {
+      dist_acc += s.dist_;
       continue;
     }
 
