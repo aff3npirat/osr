@@ -544,6 +544,7 @@ elevation_storage::elevation& elevation_storage::elevation::operator+=(
 elevation_storage::elevation elevation_storage::elevation::swapped() const {
   return {.up_ = down_,
           .down_ = up_,
+          .n_ = n_,
           .values_ = {values_.rbegin(), values_.rend()}};
 }
 
