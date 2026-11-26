@@ -183,7 +183,7 @@ std::vector<ev::elevation_meters_t> get_way_elevation(
   };
 
   auto stop = false;
-  while (n < params.max_points_) {
+  while (n < params.max_points_ && n < steps) {
     stop = true;
     for (auto s = 1U; s < steps; ++s) {
       auto const m = get(s);
@@ -455,6 +455,8 @@ elevation_storage::elevation elevation_storage::get_elevations(
     } else if (v < prev) {
       e.down_ += static_cast<elevation_monotonic_t::value_t>((prev - v).v_);
     }
+
+    prev = v;
   }
 
   return e;
