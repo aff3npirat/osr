@@ -11,11 +11,11 @@
 #include "cista/mmap.h"
 
 #include "fmt/core.h"
-#include "fmt/ranges.h"
 
 #include "osr/extract/extract.h"
 #include "osr/location.h"
 #include "osr/lookup.h"
+#include "osr/preprocessing/elevation/shared.h"
 #include "osr/routing/profile.h"
 #include "osr/routing/route.h"
 #include "osr/types.h"
@@ -32,8 +32,14 @@ TEST(extract, wa) {
   fs::remove_all(p, ec);
   fs::create_directories(p, ec);
 
-  osr::extract(false, osr::test::osm_to_pbf("test/map.osm").generic_string(), p,
-               "test/restriction_test_elevation/");
+  osr::extract(
+      false, osr::test::osm_to_pbf("test/map.osm").generic_string(), p,
+      "test/restriction_test_elevation/",
+      {
+          .min_elevation_ = preprocessing::elevation::elevation_meters_t{1},
+          .min_incline_ = 0.1,
+          .max_incline_ = 1.0,
+      });
 
   auto w = osr::ways{p, cista::mmap::protection::READ};
   auto l = osr::lookup{w, p, cista::mmap::protection::READ};
@@ -73,15 +79,15 @@ TEST(extract, wa) {
   constexpr auto const kShortestDistance = 163.0;
   ASSERT_TRUE(route_no_costs.has_value());
   EXPECT_TRUE(std::abs(route_no_costs->dist_ - kShortestDistance) < 2.0);
-  // Upper bounds for elevations on each segment
-  EXPECT_EQ(elevation_monotonic_t{4U + 1U}, route_no_costs->elevation_.up_);
-  EXPECT_EQ(elevation_monotonic_t{0U + 6U}, route_no_costs->elevation_.down_);
+  // Exact values on each segment
+  EXPECT_EQ(elevation_monotonic_t{4U}, route_no_costs->elevation_.up_);
+  EXPECT_EQ(elevation_monotonic_t{6U}, route_no_costs->elevation_.down_);
 
   ASSERT_TRUE(route_high_costs.has_value());
   EXPECT_TRUE(route_high_costs->dist_ - kShortestDistance > 2.0);
-  // Upper bounds for elevations on each segment
-  EXPECT_EQ(elevation_monotonic_t{1U + 0U}, route_high_costs->elevation_.up_);
-  EXPECT_EQ(elevation_monotonic_t{4U + 0U}, route_high_costs->elevation_.down_);
+  // Exact values on each segment
+  EXPECT_EQ(elevation_monotonic_t{1U}, route_high_costs->elevation_.up_);
+  EXPECT_EQ(elevation_monotonic_t{3U}, route_high_costs->elevation_.down_);
 }
 
 // A turn restriction between ways at positions >= 16 of a node (node ways

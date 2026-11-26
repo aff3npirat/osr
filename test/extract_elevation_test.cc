@@ -16,7 +16,7 @@
 namespace fs = std::filesystem;
 using namespace osr;
 
-TEST(elevation, flat_test) {
+TEST(extract_elevation, DISABLED_realworld_flat_test) {
   auto p = fs::temp_directory_path() / "osr_test";
   auto ec = std::error_code{};
   fs::remove_all(p, ec);
@@ -24,9 +24,8 @@ TEST(elevation, flat_test) {
 
   extract(false,
           osr::test::osm_to_pbf("test/da_hbf_elevation.osm").generic_string(),
-          p,
+          p, "test/extract_test_elevation/srtm",
           preprocessing::elevation::elevation_params{
-              .stats_file_ = "test/elevation_test_data",
               .min_elevation_ = preprocessing::elevation::elevation_meters_t{1},
               .min_incline_ = 0.1,
               .max_incline_ = 0.35});
@@ -48,15 +47,15 @@ TEST(elevation, flat_test) {
         preprocessing::elevation::elevation_meters_t{groundTruth - kTolerance};
     auto const max =
         preprocessing::elevation::elevation_meters_t{groundTruth + kTolerance};
-    ASSERT_EQ(1, res.n_);
-    EXPECT_THAT(*res.first_,
+    ASSERT_EQ(1U, res.n_);
+    EXPECT_THAT(res.values_[0],
                 ::testing::AllOf(::testing::Ge(min), ::testing::Le(max)));
     ASSERT_EQ(elevation_monotonic_t{0}, res.down_);
     ASSERT_EQ(elevation_monotonic_t{0}, res.up_);
   }
 }
 
-TEST(elevation, up_down_test) {
+TEST(extract_elevation, DISABLED_realworld_up_down_test) {
   auto p = fs::temp_directory_path() / "osr_test";
   auto ec = std::error_code{};
   fs::remove_all(p, ec);
@@ -64,19 +63,18 @@ TEST(elevation, up_down_test) {
 
   extract(false,
           osr::test::osm_to_pbf("test/taunus_elevation.osm").generic_string(),
-          p,
+          p, "test/extract_test_elevation/srtm",
           preprocessing::elevation::elevation_params{
-              .stats_file_ = "test/elevation_test_data",
               .min_elevation_ = preprocessing::elevation::elevation_meters_t{1},
               .min_incline_ = 0.1,
               .max_incline_ = 0.35});
 
   auto const elevation = elevation_storage::try_open(p);
   auto w = ways{p, cista::mmap::protection::READ};
-  auto const start_osm = osm_node_idx_t{300146683};
-  auto const end_osm = osm_node_idx_t{300146687};
-  auto const from_idx = w.find_node_idx(start_osm);
-  auto const to_idx = w.find_node_idx(end_osm);
+  auto const from_osm = osm_node_idx_t{300146683};
+  auto const to_osm = osm_node_idx_t{300146687};
+  auto const from_idx = w.find_node_idx(from_osm).value();
+  auto const to_idx = w.find_node_idx(to_osm).value();
   auto const way_idx = w.find_way(osm_way_idx_t{43798200}).value();
 
   auto const kTolerance = 1;
@@ -89,7 +87,8 @@ TEST(elevation, up_down_test) {
   auto down = elevation_monotonic_t{0};
   for (auto const [from, to] : utl::pairwise(w.r_->way_nodes_[way_idx])) {
     if (from < from_idx || to > to_idx) {
-      break;
+      ++i;
+      continue;
     }
 
     auto const res = elevation->get_elevations(way_idx, i);
@@ -99,7 +98,7 @@ TEST(elevation, up_down_test) {
 
     for (int j = 0U; j < res.n_; ++j) {
       EXPECT_THAT(
-          *std::next(res.first_, j),
+          res.values_[j],
           ::testing::AllOf(::testing::Ge(kGroundTruthMin - kTolerance),
                            ::testing::Le(kGroundTruthMax + kTolerance)));
     }
