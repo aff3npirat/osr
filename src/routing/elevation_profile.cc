@@ -10,11 +10,11 @@
 
 #include "cista/strong.h"
 
-#include "osr/point.h"
-#include "osr/preprocessing/elevation/shared.h"
 #include "utl/helpers/algorithm.h"
 
 #include "osr/elevation_storage.h"
+#include "osr/point.h"
+#include "osr/preprocessing/elevation/shared.h"
 #include "osr/types.h"
 #include "osr/ways.h"
 
