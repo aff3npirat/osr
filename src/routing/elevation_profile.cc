@@ -22,20 +22,20 @@ namespace osr {
 
 namespace ev = preprocessing::elevation;
 
-template <typename T>
 struct moving_average {
-  static std::vector<T> apply(std::vector<T> const& values,
-                              std::vector<double> const& distances,
-                              double window_distance,
-                              T pad_left,
-                              T pad_right) {
+  static std::vector<ev::elevation_meters_t> apply(
+      std::vector<ev::elevation_meters_t> const& values,
+      std::vector<double> const& distances,
+      double window_distance,
+      ev::elevation_meters_t pad_left,
+      ev::elevation_meters_t pad_right) {
     if (values.empty() || values.size() != distances.size()) {
       return {};
     }
 
     auto const half_window_d = window_distance / 2.0;
 
-    auto res = std::vector<T>(values.size());
+    auto res = std::vector<ev::elevation_meters_t>(values.size());
 
     auto w_start = 0U;
     auto w_end = 0U;
@@ -90,7 +90,8 @@ struct moving_average {
         sum += val;
       }
 
-      res[i] = static_cast<T>(sum / window_distance);
+      res[i] = ev::elevation_meters_t{
+          static_cast<ev::elevation_meters_t::value_t>(sum / window_distance)};
     }
 
     return res;
@@ -161,9 +162,9 @@ elevation_profile::elevation_profile(ways const& w,
     }
   }
 
-  elevation_ = moving_average<ev::elevation_meters_t>::apply(
-      elevation_, distances, static_cast<double>(dist_acc) / 4,
-      elevation_.front(), elevation_.back());
+  elevation_ = moving_average::apply(elevation_, distances,
+                                     static_cast<double>(dist_acc) / 4,
+                                     elevation_.front(), elevation_.back());
   min_ = *std::min_element(begin(elevation_), end(elevation_));
   max_ = *std::max_element(begin(elevation_), end(elevation_));
   baseline_ = elevation_[0];
