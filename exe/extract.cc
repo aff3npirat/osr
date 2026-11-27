@@ -1,11 +1,12 @@
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 
 #include "fmt/core.h"
 
 #include "conf/options_parser.h"
 
-#include "osr/elevation_storage.h"
+#include "osr/preprocessing/elevation/shared.h"
 #include "utl/progress_tracker.h"
 
 #include "osr/extract/extract.h"
@@ -26,6 +27,9 @@ struct config : public conf::configuration {
     param(min_incline_, "min_incline", "minimum incline to consider not flat");
     param(max_incline_, "max_incline",
           "maximum elevation difference (relative to sampling resolution)");
+    param(max_points_, "max_points",
+          "maximum number of elevation samples per way segment");
+    param(elevation_stats_, "elevation_stats", "stat file for elevation");
   }
 
   std::filesystem::path in_, out_, elevation_data_;
@@ -33,6 +37,8 @@ struct config : public conf::configuration {
   std::uint32_t min_elevation_{1};
   double min_incline_{0.1};
   double max_incline_{0.45};
+  unsigned max_points_{8};
+  std::filesystem::path elevation_stats_{};
 };
 
 int main(int ac, char const** av) {
@@ -54,9 +60,15 @@ int main(int ac, char const** av) {
   utl::activate_progress_tracker("osr");
   auto const silencer = utl::global_progress_bars{false};
 
-  extract(c.with_platforms_, c.in_, c.out_, c.elevation_data_,
-          preprocessing::elevation::elevation_params{
-              .min_elevation_ = c.min_elevation_,
-              .min_incline_ = c.min_incline_,
-              .max_incline_ = c.max_incline_});
+  extract(
+      c.with_platforms_, c.in_, c.out_, c.elevation_data_,
+      preprocessing::elevation::elevation_params{
+          .max_points_ = c.max_points_,
+          .stats_file_ = (c.elevation_stats_.compare(""))
+                             ? std::optional<std::filesystem::path>{}
+                             : c.elevation_stats_,
+          .min_elevation_ =
+              preprocessing::elevation::elevation_meters_t{c.min_elevation_},
+          .min_incline_ = c.min_incline_,
+          .max_incline_ = c.max_incline_});
 }
