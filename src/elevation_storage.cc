@@ -268,10 +268,11 @@ way_ordering_vec calculate_way_order(path_vec& paths,
 
   for (auto const [way_idx, way] : utl::enumerate(w.r_->way_nodes_)) {
     if (!way.empty()) {
-      auto const node_point = points[way.front()];
-      auto const tile_idx = provider.tile_idx(node_point);
-      if (tile_idx != ev::tile_idx_t::invalid()) {
-        ordering.emplace_back(way_idx_t{way_idx}, std::move(tile_idx));
+      for (auto const node_point : {points[way.front()], points[way.back()]}) {
+        auto const tile_idx = provider.tile_idx(node_point);
+        if (tile_idx != ev::tile_idx_t::invalid()) {
+          ordering.emplace_back(way_idx_t{way_idx}, std::move(tile_idx));
+        }
       }
     }
     pt->increment();
