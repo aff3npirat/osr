@@ -110,7 +110,7 @@ elevation_profile::elevation_profile(ways const& w,
     }
   };
 
-  auto dist_acc = 0U;
+  auto dist_acc{0U};
   auto it = utl::find_if(segments, [&](auto const& seg) {
     if (seg.elevation_.n_ != 0) {
       return true;
@@ -154,7 +154,7 @@ elevation_profile::elevation_profile(ways const& w,
     for (auto i = 1U; i < s.elevation_.n_; ++i) {
       to_lng = from_lng + lng_dist * i;
       to_lat = from_lat + lat_dist * i;
-      dist_acc += step_dist;
+      dist_acc += static_cast<unsigned>(step_dist);
 
       add(point::from_latlng({to_lat, to_lng}), dist_acc,
           s.elevation_.values_[i]);
