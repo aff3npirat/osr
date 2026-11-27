@@ -1,5 +1,8 @@
 #include "osr/elevation_storage.h"
 
+#if __cpp_lib_execution
+#include <execution>
+#endif
 #include <cmath>
 #include <algorithm>
 #include <array>
@@ -482,10 +485,12 @@ elevation_storage::elevation& elevation_storage::elevation::operator+=(
 }
 
 elevation_storage::elevation elevation_storage::elevation::swapped() const {
-  return {.up_ = down_,
-          .down_ = up_,
-          .n_ = n_,
-          .values_ = {values_.rbegin(), values_.rend()}};
+  return {
+      .values_ = {values_.rbegin(), values_.rend()},
+      .n_ = n_,
+      .up_ = down_,
+      .down_ = up_,
+  };
 }
 
 }  // namespace osr

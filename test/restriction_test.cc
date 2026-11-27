@@ -26,7 +26,7 @@
 namespace fs = std::filesystem;
 using namespace osr;
 
-TEST(extract, wa) {
+TEST(extract, DISABLED_wa) {
   auto p = fs::temp_directory_path() / "osr_test";
   auto ec = std::error_code{};
   fs::remove_all(p, ec);

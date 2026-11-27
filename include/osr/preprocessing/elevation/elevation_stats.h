@@ -10,7 +10,7 @@ struct elevation_stats {
   static auto const kNBuckets = 8U;
 
   elevation_stats(unsigned max_points) : max_points_{max_points} {
-    for (auto const _ : buckets_) {
+    for (auto i = 0U; i < kNBuckets; ++i) {
       n_per_length_.add_back_sized(max_points);
     }
   }
