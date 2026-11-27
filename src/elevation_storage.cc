@@ -439,7 +439,7 @@ void elevation_storage::set_elevations(ways const& w,
 
 elevation_storage::elevation elevation_storage::get_elevations(
     way_idx_t const way, std::uint16_t const segment) const {
-  if (way >= elevations_.size() || segment >= offsets_[way].size()) {
+  if (way >= offsets_.size() || segment >= offsets_[way].size()) {
     return {};
   }
 
